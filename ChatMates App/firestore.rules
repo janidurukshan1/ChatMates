@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Check if the user is the Admin (Owner)
+    function isAdmin() {
+      return request.auth != null && request.auth.token.phone_number == "+94760900934";
+    }
+
+    // Is logged in
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    // Admin Secure Config
+    match /admin/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Global Settings (Version, Notifications, etc.)
+    match /GlobalSettings/{document=**} {
+      allow read: if isLoggedIn(); 
+      allow write: if isAdmin();
+    }
+
+    // Users Collection (Blocking structure)
+    match /users/{userId} {
+      allow read: if isLoggedIn();
+      // Only the user themselves or the admin can write to their document
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+
+    // Chats & Messages
+    match /chats/{chatId} {
+      allow read, write: if isLoggedIn(); // Simplify logic for now
+      
+      match /messages/{messageId} {
+        allow read, write: if isLoggedIn();
+      }
+    }
+  }
+}
